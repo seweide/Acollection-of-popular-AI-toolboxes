@@ -1,0 +1,60 @@
+name: Merge Bilingual README
+
+on:
+  # 当推送到主分支时触发
+  push:
+    branches: [ main, master ]
+  # 允许手动触发工作流
+  workflow_dispatch:
+
+jobs:
+  merge-readmes:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # 确保有足够的权限提交更改
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # 获取所有历史记录，以便后续提交
+          fetch-depth: 0
+      
+      - name: Validate README files exist
+        run: |
+          if [ ! -f "README.zh.md" ]; then
+            echo "Error: README.zh.md not found!"
+            exit 1
+          fi
+          if [ ! -f "README.en.md" ]; then
+            echo "Error: README.en.md not found!"
+            exit 1
+          fi
+      
+      - name: Merge README files
+        run: |
+          # 创建合并后的 README 文件
+          echo "# 📖 README | [中文](README.md#中文说明) | [English](README.md#english-version)" > README.md
+          echo -e "\n## 中文说明\n" >> README.md
+          cat README.zh.md >> README.md
+          echo -e "\n\n## English Version\n" >> README.md
+          cat README.en.md >> README.md
+          
+          # 显示合并后的文件内容（用于调试）
+          echo "--- 合并后的 README.md 内容 ---"
+          cat README.md
+          echo "--- 内容结束 ---"
+      
+      - name: Commit and push changes
+        run: |
+          # 配置 Git 用户信息
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          
+          # 检查是否有文件更改
+          git diff --exit-code || (
+            # 有更改时提交并推送
+            git add README.md
+            git commit -m "🤖 自动合并双语 README [skip ci]"
+            git push
+          )
